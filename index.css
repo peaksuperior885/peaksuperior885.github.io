@@ -1,0 +1,263 @@
+        body {
+            margin: 0;
+           background: linear-gradient(
+            135deg,
+          #bf2c2c,
+          #621111,
+          #3c096c,
+            #38b9ff
+           );
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        .btn {
+            transition: background-color 0.2s ease,
+                box-shadow 0.15s ease,
+                transform 0.15s ease;
+            background-color: rgb(225, 0, 255);
+            color: white;
+            border-style: solid;
+            border-width: 1.5px;
+            border-color: blueviolet;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-right: 30px;
+            padding-bottom: 15px;
+            padding-top: 15px;
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+
+        .btn:hover {
+            background-color: rgb(111, 0, 126);
+            box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.25);
+        }
+
+        .btn:active {
+            background-color: rgb(246, 176, 255);
+        }
+
+.banner {
+    position: relative;
+
+    background: linear-gradient(
+        135deg,
+        #7b2cbf,
+        #5a189a,
+        #3c096c
+    );
+
+    color: white;
+    padding: 40px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+        .banner h1 {
+           margin: 0;
+           font-size: 40px;
+        }
+
+        .banner p {
+           margin-top: 10px;
+           font-size: 18px;
+        }
+
+        .image1 {
+            width: 300px;
+        }
+
+.projects {
+    flex-wrap: wrap;
+    display: flex;
+    gap: 30px;
+    padding: 20px;
+}
+
+.card {
+    margin-top: 40px;
+
+    background: linear-gradient(
+        135deg,
+        #b45eff,
+        #4207b1,
+        #1b096c
+    );
+
+    border: 1.5px solid blueviolet;
+    border-radius: 8px;
+
+    width: 300px;
+    padding: 20px;
+
+    display: flex;
+    flex-direction: column;
+
+    transition: transform 0.2s ease,
+                box-shadow 0.2s ease;
+}
+
+.f_learn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: auto;
+
+    transition: background-color 0.2s ease,
+                box-shadow 0.15s ease,
+                transform 0.15s ease;
+
+    background-color: rgb(225, 0, 255);
+    color: white;
+
+    border: 1.5px solid blueviolet;
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    padding: 15px 30px;
+}
+
+        .f_learn:hover {
+            background-color: rgb(111, 0, 126);
+            box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.25);
+        }
+
+        .f_learn:active {
+            background-color: rgb(246, 176, 255);
+        }
+
+        .center {
+            text-align: center;
+        }
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+    .image1 {
+        border-radius: 10px;
+    }
+
+.home_icon {
+    width: 20px;
+    height: auto;
+}
+
+.download_banner {
+   margin-top: 40px;
+background: linear-gradient(
+    135deg,
+    #9b5de5,
+    #6a0dad
+);
+   color: white;
+   padding: 40px;
+   width: 90%;
+   max-width: 1200px;
+   max-height: 800px;
+   margin-left: auto;
+   margin-right: auto;
+   border-radius: 8px;
+   box-sizing: border-box;
+   font-family: Arial, sans-serif;
+}
+
+
+    .download_banner h1 {
+       margin: 0;
+       font-size: 40px;
+    }
+
+    .download_banner p {
+       margin-top: 10px;
+       font-size: 18px;
+    }
+
+
+.tab-contents {
+    margin-top: 30px;
+}
+
+.tab-content {
+    display: none !important;
+}
+
+.tab-content.active {
+    display: flex !important;
+    animation: fadeInUp 0.4s ease-out forwards;
+}
+
+.tab-btn.active {
+    background-color: rgb(111, 0, 126);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Smooth entry animation frame */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tabs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.aboutme {
+    flex-wrap: wrap;
+    display: flex;
+    gap: 30px;
+    padding: 20px;
+}
+
+.abtmecard {
+    margin-top: 40px;
+
+    background: linear-gradient(
+        135deg,
+        #b45eff,
+        #4207b1,
+        #1b096c
+    );
+
+    border: 1.5px solid blueviolet;
+    border-radius: 8px;
+
+    width: 100%;
+    padding: 20px;
+
+    display: flex;
+    flex-direction: column;
+
+    transition: transform 0.2s ease,
+                box-shadow 0.2s ease;
+}
+
+.roach {
+    position: absolute;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+
+    width: 120px;
+    height: 120px;
+
+    transition: transform 0.2s ease;
+}
+
+.roach:hover {
+    transform: translateY(-50%) scale(1.1) rotate(5deg);
+}
