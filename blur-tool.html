@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blur Studio — free image blur tool</title>
+<style>
+  :root{
+    --bg:#141412;
+    --panel:#1c1c19;
+    --panel-2:#242420;
+    --line:#33332d;
+    --ink:#f2f0e8;
+    --ink-dim:#9c9a90;
+    --accent:#d97a3f;
+    --accent-dim:#8a5230;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:32px 16px 80px;
+  }
+  header{
+    text-align:center;
+    max-width:640px;
+    margin-bottom:28px;
+  }
+  h1{
+    font-size:28px;
+    font-weight:600;
+    margin:0 0 8px;
+    letter-spacing:-0.02em;
+  }
+  h1 span{color:var(--accent);}
+  header p{
+    color:var(--ink-dim);
+    font-size:15px;
+    line-height:1.5;
+    margin:0;
+  }
+  .app{
+    width:100%;
+    max-width:1000px;
+    display:grid;
+    grid-template-columns:1fr 300px;
+    gap:20px;
+  }
+  @media (max-width:800px){
+    .app{grid-template-columns:1fr;}
+  }
+  .canvas-wrap{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:420px;
+    position:relative;
+    overflow:hidden;
+  }
+  #dropzone{
+    width:100%;
+    height:100%;
+    min-height:388px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:10px;
+    border:2px dashed var(--line);
+    border-radius:10px;
+    color:var(--ink-dim);
+    cursor:pointer;
+    transition:border-color .15s ease, color .15s ease;
+    text-align:center;
+    padding:24px;
+  }
+  #dropzone:hover, #dropzone.drag{
+    border-color:var(--accent-dim);
+    color:var(--ink);
+  }
+  #dropzone svg{opacity:.7;}
+  canvas{
+    max-width:100%;
+    max-height:70vh;
+    border-radius:8px;
+    display:none;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+    height:fit-content;
+  }
+  .field label{
+    display:flex;
+    justify-content:space-between;
+    font-size:13px;
+    color:var(--ink-dim);
+    margin-bottom:8px;
+  }
+  .field label b{color:var(--ink); font-weight:500;}
+  select, input[type=range]{
+    width:100%;
+  }
+  select{
+    background:var(--panel-2);
+    color:var(--ink);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:9px 10px;
+    font-size:14px;
+    appearance:none;
+  }
+  input[type=range]{
+    -webkit-appearance:none;
+    height:4px;
+    border-radius:2px;
+    background:var(--line);
+    outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:16px;height:16px;
+    border-radius:50%;
+    background:var(--accent);
+    cursor:pointer;
+    border:2px solid var(--bg);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:16px;height:16px;
+    border-radius:50%;
+    background:var(--accent);
+    cursor:pointer;
+    border:2px solid var(--bg);
+  }
+  .btnrow{display:flex; gap:10px; margin-top:4px;}
+  button{
+    flex:1;
+    background:var(--panel-2);
+    color:var(--ink);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:14px;
+    cursor:pointer;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  button:hover{border-color:var(--accent-dim);}
+  button.primary{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#1b1108;
+    font-weight:600;
+  }
+  button.primary:hover{background:#e58649;}
+  button:disabled{opacity:.4; cursor:not-allowed;}
+  .hint{
+    font-size:12px;
+    color:var(--ink-dim);
+    line-height:1.5;
+  }
+  #fileInput{display:none;}
+  .divider{height:1px; background:var(--line); margin:2px 0;}
+  .badge{
+    font-size:11px;
+    color:var(--accent);
+    border:1px solid var(--accent-dim);
+    padding:2px 8px;
+    border-radius:999px;
+    display:inline-block;
+    margin-bottom:14px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">runs entirely in your browser, no upload, no paywall</div>
+  <h1>Blur <span>studio</span></h1>
+  <p>Drop a photo in, pick a blur type, drag the radius. Download the result. Nothing ever leaves this tab.</p>
+</header>
+
+<div class="app">
+  <div class="canvas-wrap">
+    <div id="dropzone">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg>
+      <div><b>Click to choose an image</b><br>or drag one here</div>
+    </div>
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div class="panel">
+    <div class="field">
+      <label>Blur type</label>
+      <select id="blurType">
+        <option value="gaussian">Gaussian — smooth, soft</option>
+        <option value="box">Box — flatter, faster</option>
+        <option value="motion">Motion — directional streak</option>
+        <option value="pixelate">Pixelate — mosaic</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Radius <b id="radiusVal">12px</b></label>
+      <input type="range" id="radius" min="0" max="60" value="12" step="1">
+    </div>
+
+    <div class="field" id="angleField" style="display:none;">
+      <label>Motion angle <b id="angleVal">0°</b></label>
+      <input type="range" id="angle" min="0" max="180" value="0" step="1">
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="btnrow">
+      <button id="resetBtn">Reset</button>
+      <button id="downloadBtn" class="primary" disabled>Download</button>
+    </div>
+    <button id="newImageBtn" style="display:none;">Choose a different image</button>
+
+    <p class="hint">Larger images are processed at full resolution, so big files may take a second on box/motion blur. Gaussian and pixelate are near instant.</p>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*">
+
+<script>
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const blurType = document.getElementById('blurType');
+const radius = document.getElementById('radius');
+const radiusVal = document.getElementById('radiusVal');
+const angle = document.getElementById('angle');
+const angleVal = document.getElementById('angleVal');
+const angleField = document.getElementById('angleField');
+const downloadBtn = document.getElementById('downloadBtn');
+const resetBtn = document.getElementById('resetBtn');
+const newImageBtn = document.getElementById('newImageBtn');
+
+let originalImage = null;
+let originalCanvas = document.createElement('canvas');
+let originalCtx = originalCanvas.getContext('2d');
+
+function loadFile(file){
+  if(!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      originalImage = img;
+      const MAXW = 1600;
+      let w = img.width, h = img.height;
+      if(w > MAXW){ h = h * (MAXW / w); w = MAXW; }
+      originalCanvas.width = w;
+      originalCanvas.height = h;
+      originalCtx.drawImage(img, 0, 0, w, h);
+
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style.display = 'block';
+      dropzone.style.display = 'none';
+      downloadBtn.disabled = false;
+      newImageBtn.style.display = 'block';
+      render();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+dropzone.addEventListener('click', () => fileInput.click());
+newImageBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
+
+['dragover','dragenter'].forEach(evt =>
+  dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag'); })
+);
+['dragleave','drop'].forEach(evt =>
+  dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag'); })
+);
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  loadFile(e.dataTransfer.files[0]);
+});
+
+blurType.addEventListener('change', () => {
+  angleField.style.display = blurType.value === 'motion' ? 'block' : 'none';
+  render();
+});
+radius.addEventListener('input', () => {
+  radiusVal.textContent = radius.value + 'px';
+  render();
+});
+angle.addEventListener('input', () => {
+  angleVal.textContent = angle.value + '°';
+  render();
+});
+resetBtn.addEventListener('click', () => {
+  radius.value = 12;
+  radiusVal.textContent = '12px';
+  angle.value = 0;
+  angleVal.textContent = '0°';
+  blurType.value = 'gaussian';
+  angleField.style.display = 'none';
+  render();
+});
+downloadBtn.addEventListener('click', () => {
+  const link = document.createElement('a');
+  link.download = 'blurred-image.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+});
+
+function render(){
+  if(!originalImage) return;
+  const r = parseInt(radius.value, 10);
+  const type = blurType.value;
+  const w = canvas.width, h = canvas.height;
+
+  if(r === 0){
+    ctx.filter = 'none';
+    ctx.clearRect(0,0,w,h);
+    ctx.drawImage(originalCanvas, 0, 0);
+    return;
+  }
+
+  if(type === 'gaussian'){
+    ctx.filter = `blur(${r}px)`;
+    ctx.clearRect(0,0,w,h);
+    ctx.drawImage(originalCanvas, 0, 0);
+    ctx.filter = 'none';
+  } else if(type === 'box'){
+    ctx.filter = 'none';
+    ctx.clearRect(0,0,w,h);
+    ctx.drawImage(originalCanvas, 0, 0);
+    boxBlur(ctx, w, h, r);
+  } else if(type === 'motion'){
+    motionBlur(ctx, originalCanvas, w, h, r, parseInt(angle.value,10));
+  } else if(type === 'pixelate'){
+    pixelate(ctx, originalCanvas, w, h, r);
+  }
+}
+
+function boxBlur(ctx, w, h, radius){
+  const passes = 3;
+  const boxSize = Math.max(1, Math.round(radius / 1.5));
+  let imgData = ctx.getImageData(0,0,w,h);
+  for(let p=0; p<passes; p++){
+    imgData = boxBlurPass(imgData, w, h, boxSize);
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+function boxBlurPass(imgData, w, h, boxSize){
+  const src = imgData.data;
+  const out = new Uint8ClampedArray(src.length);
+  const r = boxSize;
+  const horiz = new Uint8ClampedArray(src.length);
+
+  for(let y=0; y<h; y++){
+    let rSum=0,gSum=0,bSum=0,aSum=0,count=0;
+    const rowStart = y*w*4;
+    for(let x=-r; x<=r; x++){
+      const xx = Math.min(w-1, Math.max(0, x));
+      const idx = rowStart + xx*4;
+      rSum += src[idx]; gSum += src[idx+1]; bSum += src[idx+2]; aSum += src[idx+3];
+      count++;
+    }
+    for(let x=0; x<w; x++){
+      const idx = rowStart + x*4;
+      horiz[idx] = rSum/count; horiz[idx+1]=gSum/count; horiz[idx+2]=bSum/count; horiz[idx+3]=aSum/count;
+      const addX = Math.min(w-1, x+r+1);
+      const remX = Math.max(0, x-r);
+      const addIdx = rowStart + addX*4;
+      const remIdx = rowStart + remX*4;
+      rSum += src[addIdx]-src[remIdx];
+      gSum += src[addIdx+1]-src[remIdx+1];
+      bSum += src[addIdx+2]-src[remIdx+2];
+      aSum += src[addIdx+3]-src[remIdx+3];
+    }
+  }
+
+  for(let x=0; x<w; x++){
+    let rSum=0,gSum=0,bSum=0,aSum=0,count=0;
+    for(let y=-r; y<=r; y++){
+      const yy = Math.min(h-1, Math.max(0, y));
+      const idx = (yy*w + x)*4;
+      rSum += horiz[idx]; gSum += horiz[idx+1]; bSum += horiz[idx+2]; aSum += horiz[idx+3];
+      count++;
+    }
+    for(let y=0; y<h; y++){
+      const idx = (y*w + x)*4;
+      out[idx] = rSum/count; out[idx+1]=gSum/count; out[idx+2]=bSum/count; out[idx+3]=aSum/count;
+      const addY = Math.min(h-1, y+r+1);
+      const remY = Math.max(0, y-r);
+      const addIdx = (addY*w + x)*4;
+      const remIdx = (remY*w + x)*4;
+      rSum += horiz[addIdx]-horiz[remIdx];
+      gSum += horiz[addIdx+1]-horiz[remIdx+1];
+      bSum += horiz[addIdx+2]-horiz[remIdx+2];
+      aSum += horiz[addIdx+3]-horiz[remIdx+3];
+    }
+  }
+  return new ImageData(out, w, h);
+}
+
+function motionBlur(ctx, srcCanvas, w, h, radius, angleDeg){
+  ctx.clearRect(0,0,w,h);
+  const steps = Math.max(2, Math.round(radius));
+  const rad = angleDeg * Math.PI / 180;
+  const dx = Math.cos(rad);
+  const dy = Math.sin(rad);
+  ctx.globalAlpha = 1/steps;
+  for(let i=-steps/2; i<=steps/2; i++){
+    const ox = dx * i;
+    const oy = dy * i;
+    ctx.drawImage(srcCanvas, ox, oy);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function pixelate(ctx, srcCanvas, w, h, radius){
+  const factor = Math.max(1, Math.round(radius/2) + 1);
+  const smallW = Math.max(1, Math.floor(w/factor));
+  const smallH = Math.max(1, Math.floor(h/factor));
+  const tmp = document.createElement('canvas');
+  tmp.width = smallW; tmp.height = smallH;
+  const tctx = tmp.getContext('2d');
+  tctx.drawImage(srcCanvas, 0, 0, smallW, smallH);
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0,0,w,h);
+  ctx.drawImage(tmp, 0, 0, smallW, smallH, 0, 0, w, h);
+  ctx.imageSmoothingEnabled = true;
+}
+</script>
+
+</body>
+</html>
