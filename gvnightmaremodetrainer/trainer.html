@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />  <title>Greenville Lock Trainer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    body {
+      background: #121212;
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      padding: 12px;
+overflow-x: hidden;
+overflow-y: auto;
+      user-select: none;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+      color: #aaa;
+      letter-spacing: 1px;
+    }
+
+    #game-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 550px;
+      background: #191919;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 0 2px #333;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #191919;
+      touch-action: none;
+    }
+
+    #status {
+      width: 100%;
+      max-width: 550px;
+      padding: 10px 14px;
+      font-size: 1.05rem;
+      font-weight: bold;
+      background: #222;
+      border-radius: 0 0 8px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    #message {
+      text-align: center;
+      min-height: 1.4em;
+      font-size: 0.95rem;
+      margin-top: 6px;
+      color: #0f0;
+    }
+
+    /* Mobile / touch controls */
+    #controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      width: 100%;
+      max-width: 550px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: #333;
+      border: 2px solid #555;
+      color: #fff;
+      font-family: inherit;
+      font-size: 1.1rem;
+      font-weight: bold;
+      padding: 14px 18px;
+      border-radius: 10px;
+      min-width: 70px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .btn:active {
+      background: #555;
+      transform: scale(0.96);
+    }
+
+    .btn.lock {
+      background: #1a5c2a;
+      border-color: #2a8c3a;
+      min-width: 110px;
+    }
+
+    .btn.retry {
+      background: #5c1a1a;
+      border-color: #8c2a2a;
+      display: none;
+    }
+
+    .btn.retry.show {
+      display: inline-block;
+    }
+
+    /* Slightly dim controls on desktop */
+    @media (min-width: 700px) and (hover: hover) {
+      #controls {
+        opacity: 0.75;
+      }
+    }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 0.8rem;
+      color: #666;
+      text-align: center;
+      max-width: 550px;
+      line-height: 1.4;
+    }
+
+    .disclaimer {
+      max-width: 550px;
+      margin: 24px auto 12px;
+      padding: 12px 16px;
+      color: #999;
+      font-family: "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      text-align: center;
+      border-top: 1px solid #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>GREENVILLE LOCK TRAINER</h1>
+
+  <div id="game-wrapper">
+    <canvas id="game" width="550" height="300"></canvas>
+  </div>
+
+  <div id="status">
+    <span id="timer">Time Remaining: 20s</span>
+  </div>
+  <div id="message"></div>
+
+  <div id="controls">
+    <button class="btn" id="btn-left">◀</button>
+    <button class="btn lock" id="btn-lock">LOCK</button>
+    <button class="btn" id="btn-right">▶</button>
+    <button class="btn retry" id="btn-retry">RETRY (R)</button>
+  </div>
+
+  <p class="hint">
+    Desktop: ← → to select column · Space / Enter to lock · R to retry<br>
+    Mobile: Use the buttons below · Tap LOCK when the block is on the red line
+  </p>
+
+  <script>
+    // ====== Constants (matching original) ======
+    const NUM_COLUMNS = 5;
+    const GAME_WIDTH = 550;
+    const GAME_HEIGHT = 300;
+    const RED_LINE_Y = GAME_HEIGHT / 2;
+    const BLOCK_HEIGHT = 70;
+    const BLOCK_WIDTH = 55;
+    const FAILURE_COOLDOWN_MS = 1800;
+
+    // ====== State ======
+    let activeColumn = 0;
+    let timeLeft = 20;
+    let gameOver = false;
+    let gameWon = false;
+    let cooldownUntil = 0;
+    let columns = [];
+    let lastTime = 0;
+    let animId = null;
+    let countdownId = null;
+
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const timerEl = document.getElementById('timer');
+    const messageEl = document.getElementById('message');
+    const btnRetry = document.getElementById('btn-retry');
+
+    // ====== Column class ======
+    class ColumnBlock {
+      constructor(x, speed) {
+        this.x = x;
+        this.y = 20 + Math.random() * (GAME_HEIGHT - 100);
+        this.speed = speed;
+        this.isLocked = false;
+        this.errorFlash = 0;
+      }
+
+      update(dt) {
+        if (this.isLocked) return;
+        // Scale speed to feel similar to the original 15ms Swing timer
+        this.y += this.speed * (dt / 15);
+        if (this.y > GAME_HEIGHT - BLOCK_HEIGHT - 10 || this.y < 15) {
+          this.speed *= -1;
+          this.y = Math.max(15, Math.min(this.y, GAME_HEIGHT - BLOCK_HEIGHT - 10));
+        }
+        if (this.errorFlash > 0) this.errorFlash--;
+      }
+
+      flashError() {
+        this.errorFlash = 10;
+      }
+    }
+
+    // ====== Game logic ======
+    function initGame() {
+      columns = [];
+      activeColumn = 0;
+      timeLeft = 20;
+      gameOver = false;
+      gameWon = false;
+      cooldownUntil = 0;
+
+      const spacing = GAME_WIDTH / (NUM_COLUMNS + 1);
+      for (let i = 0; i < NUM_COLUMNS; i++) {
+        // Fast speeds to emulate 2X Nightmare difficulty
+        const speed = 8 + Math.floor(Math.random() * 6);
+        columns.push(new ColumnBlock(spacing * (i + 1) - (BLOCK_WIDTH / 2), speed));
+      }
+
+      if (animId) cancelAnimationFrame(animId);
+      if (countdownId) clearInterval(countdownId);
+
+      lastTime = performance.now();
+      animId = requestAnimationFrame(gameLoop);
+
+      countdownId = setInterval(() => {
+        if (gameWon || gameOver) return;
+        timeLeft--;
+        if (timeLeft <= 0) {
+          gameOver = true;
+          clearInterval(countdownId);
+        }
+        updateUI();
+      }, 1000);
+
+      updateUI();
+      btnRetry.classList.remove('show');
+    }
+
+    function isCoolingDown() {
+      return performance.now() < cooldownUntil;
+    }
+
+    function lockCurrentBlock() {
+      if (gameOver || gameWon || isCoolingDown()) return;
+
+      const col = columns[activeColumn];
+      if (col.isLocked) return;
+
+      const blockCenterY = col.y + BLOCK_HEIGHT / 2;
+
+      if (Math.abs(blockCenterY - RED_LINE_Y) <= 22) {
+        // Success
+        col.isLocked = true;
+        col.errorFlash = 0;
+
+        let allLocked = true;
+        for (const c of columns) {
+          if (!c.isLocked) {
+            allLocked = false;
+            break;
+          }
+        }
+
+        if (allLocked) {
+          gameWon = true;
+          clearInterval(countdownId);
+        } else {
+          // Move to next unlocked column
+          do {
+            activeColumn = (activeColumn + 1) % NUM_COLUMNS;
+          } while (columns[activeColumn].isLocked);
+        }
+      } else {
+        // Miss
+        col.flashError();
+        cooldownUntil = performance.now() + FAILURE_COOLDOWN_MS;
+      }
+
+      updateUI();
+    }
+
+    function moveLeft() {
+      if (gameOver || gameWon) return;
+      activeColumn = (activeColumn - 1 + NUM_COLUMNS) % NUM_COLUMNS;
+    }
+
+    function moveRight() {
+      if (gameOver || gameWon) return;
+      activeColumn = (activeColumn + 1) % NUM_COLUMNS;
+    }
+
+    function updateUI() {
+      timerEl.textContent = `Time Remaining: ${Math.max(0, timeLeft)}s`;
+
+      if (gameWon) {
+        messageEl.style.color = '#00ff64';
+        messageEl.textContent = "SUCCESS! LOCKED ALL! (Press R or RETRY)";
+        btnRetry.classList.add('show');
+      } else if (gameOver) {
+        messageEl.style.color = '#ff3333';
+        messageEl.textContent = "TIME UP! LOCK FAILED! (Press R or RETRY)";
+        btnRetry.classList.add('show');
+      } else {
+        messageEl.textContent = '';
+      }
+    }
+
+    // ====== Rendering ======
+    function draw() {
+      // Clear
+      ctx.fillStyle = '#191919';
+      ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+      // Inner frame
+      ctx.fillStyle = '#282828';
+      ctx.fillRect(10, 10, GAME_WIDTH - 20, GAME_HEIGHT - 20);
+
+      // Columns
+      for (let i = 0; i < NUM_COLUMNS; i++) {
+        const col = columns[i];
+
+        // Focus highlight
+        if (i === activeColumn && !gameOver && !gameWon) {
+          ctx.fillStyle = 'rgba(255, 255, 120, 0.27)';
+          ctx.fillRect(col.x - 5, 10, BLOCK_WIDTH + 10, GAME_HEIGHT - 20);
+        }
+
+        // Block color
+        if (col.isLocked) {
+          ctx.fillStyle = 'rgb(0, 200, 80)';
+        } else if (col.errorFlash > 0) {
+          ctx.fillStyle = '#ff0000';
+        } else {
+          ctx.fillStyle = 'rgb(100, 100, 100)';
+        }
+
+        ctx.fillRect(col.x, col.y, BLOCK_WIDTH, BLOCK_HEIGHT);
+        ctx.strokeStyle = 'rgb(220, 60, 60)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(col.x, col.y, BLOCK_WIDTH, BLOCK_HEIGHT);
+      }
+
+      // Red target line
+      ctx.strokeStyle = 'rgb(255, 30, 30)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(10, RED_LINE_Y);
+      ctx.lineTo(GAME_WIDTH - 10, RED_LINE_Y);
+      ctx.stroke();
+    }
+
+    function gameLoop(now) {
+      const dt = Math.min(now - lastTime, 50); // clamp large gaps
+      lastTime = now;
+
+      if (!gameOver && !gameWon) {
+        for (const col of columns) {
+          col.update(dt);
+        }
+      }
+
+      draw();
+      animId = requestAnimationFrame(gameLoop);
+    }
+
+    // ====== Input ======
+    // Keyboard
+    window.addEventListener('keydown', (e) => {
+      if (gameOver || gameWon) {
+        if (e.code === 'KeyR') {
+          initGame();
+        }
+        return;
+      }
+
+      if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        moveRight();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        moveLeft();
+      } else if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        lockCurrentBlock();
+      }
+    });
+
+    // Touch / mouse buttons
+    document.getElementById('btn-left').addEventListener('click', () => {
+      if (gameOver || gameWon) return;
+      moveLeft();
+    });
+
+    document.getElementById('btn-right').addEventListener('click', () => {
+      if (gameOver || gameWon) return;
+      moveRight();
+    });
+
+    document.getElementById('btn-lock').addEventListener('click', () => {
+      if (gameOver || gameWon) {
+        initGame();
+        return;
+      }
+      lockCurrentBlock();
+    });
+
+    document.getElementById('btn-retry').addEventListener('click', initGame);
+
+    // Tap canvas to lock (mobile convenience)
+    canvas.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (gameOver || gameWon) {
+        initGame();
+        return;
+      }
+      lockCurrentBlock();
+    });
+
+    // Prevent scrolling / zooming on mobile while playing
+    document.body.addEventListener('touchmove', (e) => {
+      if (e.target === canvas || e.target.closest('#controls')) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    // Start
+    initGame();
+  </script>
+
+  <footer class="disclaimer">
+    Independent community-made practice tool. Not affiliated with
+    or endorsed by Greenville or Roblox. This simulator does not
+    connect to, automate, or modify the game.
+  </footer>
+</body>
+</html>
